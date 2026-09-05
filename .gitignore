@@ -1,0 +1,44 @@
+# ==========================================
+# COMPILADOS Y PAQUETES (Maven / Java)
+# ==========================================
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Excluir archivos temporales de Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ==========================================
+# IDEs Y EDITORES DE CÓDIGO
+# ==========================================
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+out/
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# Visual Studio Code
+.vscode/
+
+# ==========================================
+# LOGS Y ARCHIVOS DEL SISTEMA OPERATIVO
+# ==========================================
+*.log
+.DS_Store
+Thumbs.db
