@@ -1,6 +1,6 @@
-# Pedidos360 - Microservicio de Productos (`ms-producto`)
+# Pedidos360 - Microservicio de Carrito (`ms-carrito`)
 
-Microservicio encargado de la gestión y persistencia del catálogo de productos para la plataforma **Pedidos360**. Expone los endpoints necesarios para consultar productos activos y validar inventarios.
+Microservicio desacoplado responsable del manejo del estado del carrito de compras activo de cada usuario para la plataforma **Pedidos360**. Se encarga de agregar ítems, sumar cantidades, recalcular subtotales y vaciar la cesta.
 
 ## 🛠️ Tecnologías Utilizadas
 
@@ -16,7 +16,7 @@ Microservicio encargado de la gestión y persistencia del catálogo de productos
 
 * JDK 17
 * Maven 3.8+
-* PostgreSQL (Base de datos `db_producto`)
+* PostgreSQL (Base de datos `db_carrito`)
 * Docker
 
 ### Variables de Entorno
@@ -24,7 +24,7 @@ Microservicio encargado de la gestión y persistencia del catálogo de productos
 | Variable | Valor por Defecto / Descripción |
 | :--- | :--- |
 | `AZURE_TENANT_ID` | `78b145ef-56b9-4397-b87c-27b242a9fce5` |
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://<HOST_BD>:5432/db_producto` |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://<HOST_BD>:5432/db_carrito` |
 | `SPRING_DATASOURCE_USERNAME` | Credencial de base de datos |
 | `SPRING_DATASOURCE_PASSWORD` | Credencial de base de datos |
 
@@ -32,8 +32,9 @@ Microservicio encargado de la gestión y persistencia del catálogo de productos
 
 | Método | Endpoint | Descripción |
 | :--- | :--- | :--- |
-| `GET` | `/api/v1/productos` | Lista todos los productos activos |
-| `GET` | `/api/v1/productos/{id}` | Obtiene el detalle de un producto por su ID |
+| `GET` | `/api/v1/carritos/{usuarioId}` | Obtiene el carrito activo del usuario |
+| `POST` | `/api/v1/carritos/{usuarioId}/items` | Agrega o suma un producto al carrito |
+| `DELETE` | `/api/v1/carritos/{usuarioId}` | Vacía el carrito activo |
 
 ### Compilación Local
 
@@ -46,20 +47,20 @@ mvn clean package -DskipTests
 1. **Construir la imagen:**
 
 ```bash
-docker build -t pedidos360/ms-producto:v1 .
+docker build -t pedidos360/ms-carrito:v1 .
 ```
 
 2. **Ejecutar contenedor:**
 
 ```bash
 docker run -d \
-  --name ms-producto \
-  -p 8082:8082 \
+  --name ms-carrito \
+  -p 8083:8083 \
   -e AZURE_TENANT_ID="78b145ef-56b9-4397-b87c-27b242a9fce5" \
-  -e SPRING_DATASOURCE_URL="jdbc:postgresql://<HOST_BD>:5432/db_producto" \
+  -e SPRING_DATASOURCE_URL="jdbc:postgresql://<HOST_BD>:5432/db_carrito" \
   -e SPRING_DATASOURCE_USERNAME="postgres" \
   -e SPRING_DATASOURCE_PASSWORD="password" \
-  pedidos360/ms-producto:v1
+  pedidos360/ms-carrito:v1
 ```
 
 ---
@@ -68,9 +69,9 @@ docker run -d \
 
 ### Backend
 
-* [Microservicio Producto (Este repositorio)](https://github.com/Raynagah/cloud-backend-producto)
+* [Microservicio Carrito (Este repositorio)](https://github.com/Raynagah/cloud-backend-carrito)
 * [BFF Orchestrator](https://github.com/Raynagah/cloud-backend-bff)
-* [Microservicio Carrito](https://github.com/Raynagah/cloud-backend-carrito)
+* [Microservicio Producto](https://github.com/Raynagah/cloud-backend-producto)
 * [Microservicio Usuarios](https://github.com/NBello26/ms-usuarios-cloud.git)
 
 ### Frontend
