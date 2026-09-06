@@ -25,12 +25,16 @@ public class ProductoClient {
     }
 
     public void actualizarStock(Long productoId, Integer cantidad, String token) {
-        // Se remueve /api/v1/productos de la cadena para no duplicar la base del application.yml
         String url = msProductoUrl + "/" + productoId + "/stock";
+
+        // Asegura el prefijo 'Bearer ' requerido por Microsoft / Spring Security
+        String authorizationHeader = (token != null && token.startsWith("Bearer ")) 
+                ? token 
+                : "Bearer " + token;
 
         restClient.patch()
                 .uri(url)
-                .header("Authorization", token)
+                .header("Authorization", authorizationHeader)
                 .body(Map.of("cantidad", cantidad))
                 .retrieve()
                 .toBodilessEntity();
