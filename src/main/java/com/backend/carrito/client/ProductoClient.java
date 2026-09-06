@@ -1,37 +1,34 @@
 package com.backend.carrito.client;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
+
+import java.util.Map;
 
 @Component
 public class ProductoClient {
 
-    // Inyectamos la URL desde application.properties
-    @Value("${producto.api.url}")
-    private String productoApiUrl;
+    private final RestClient restClient;
+    private final String msProductoUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    public ProductoClient(
+            RestClient.Builder restClientBuilder,
+            @Value("${ms.producto.url}") String msProductoUrl) {
+        
+        this.restClient = restClientBuilder.build();
+        this.msProductoUrl = msProductoUrl;
+    }
 
-    public void actualizarStock(Long productoId, Integer cantidadVariacion, String token) {
-        HttpHeaders headers = new HttpHeaders();
-        // Propagamos el token del usuario hacia ms-producto vía el API Gateway
-        headers.set("Authorization", "Bearer " + token); 
-        
-        HttpEntity<?> entity = new HttpEntity<>(headers);
-        
-        // Construimos la URL apuntando al API Gateway
-        String url = productoApiUrl + "/" + productoId + "/stock?cantidadVariacion=" + cantidadVariacion;
+    public void actualizarStock(Long productoId, Integer cantidad, String token) {
+        String url = msProductoUrl + "/api/v1/productos/" + productoId + "/stock";
 
-        // Hacemos la petición HTTP
-        ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.PATCH, entity, Void.class);
-        
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Error al comunicarse con ms-producto en AWS para actualizar stock");
-        }
+        // Usamos RestClient que soporta PATCH de forma nativa
+        restClient.patch()
+                .uri(url)
+                .header("Authorization", token) // El token ya debería venir con "Bearer "
+                .body(Map.of("cantidad", cantidad))
+                .retrieve()
+                .toBodilessEntity(); 
     }
 }
