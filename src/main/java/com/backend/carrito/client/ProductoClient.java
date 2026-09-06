@@ -14,7 +14,7 @@ public class ProductoClient {
 
     public ProductoClient(
             RestClient.Builder restClientBuilder,
-            @Value("${ms.producto.url}") String msProductoUrl) {
+            @Value("${producto.api.url}") String msProductoUrl) {
         
         this.restClient = restClientBuilder.build();
         this.msProductoUrl = msProductoUrl;
