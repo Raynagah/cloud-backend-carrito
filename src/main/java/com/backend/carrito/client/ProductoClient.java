@@ -1,6 +1,7 @@
 package com.backend.carrito.client;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -16,19 +17,22 @@ public class ProductoClient {
             RestClient.Builder restClientBuilder,
             @Value("${producto.api.url}") String msProductoUrl) {
         
-        this.restClient = restClientBuilder.build();
+        // JdkClientHttpRequestFactory usa el HttpClient nativo de Java 11+ que sí soporta PATCH
+        this.restClient = restClientBuilder
+                .requestFactory(new JdkClientHttpRequestFactory())
+                .build();
         this.msProductoUrl = msProductoUrl;
     }
 
     public void actualizarStock(Long productoId, Integer cantidad, String token) {
-        String url = msProductoUrl + "/api/v1/productos/" + productoId + "/stock";
+        // Se remueve /api/v1/productos de la cadena para no duplicar la base del application.yml
+        String url = msProductoUrl + "/" + productoId + "/stock";
 
-        // Usamos RestClient que soporta PATCH de forma nativa
         restClient.patch()
                 .uri(url)
-                .header("Authorization", token) // El token ya debería venir con "Bearer "
+                .header("Authorization", token)
                 .body(Map.of("cantidad", cantidad))
                 .retrieve()
-                .toBodilessEntity(); 
+                .toBodilessEntity();
     }
 }
