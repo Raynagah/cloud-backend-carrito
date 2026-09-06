@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Optional;
 
 @Service
@@ -103,14 +105,23 @@ public class CarritoService {
     // =========================================================================
 
     private Carrito obtenerOCrearCarrito(String usuarioId) {
-        return carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO")
-                .orElseGet(() -> carritoRepository.save(
-                        Carrito.builder()
-                                .usuarioId(usuarioId)
-                                .estado("ACTIVO")
-                                .total(BigDecimal.ZERO)
-                                .build()
-                ));
+        Carrito carrito = carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO")
+                .orElseGet(() -> {
+                    Carrito nuevoCarrito = Carrito.builder()
+                            .usuarioId(usuarioId)
+                            .estado("ACTIVO")
+                            .total(BigDecimal.ZERO)
+                            .fechaCreacion(LocalDateTime.now())
+                            .items(new ArrayList<>()) // <-- Asigna explícitamente una lista vacía
+                            .build();
+                    return carritoRepository.save(nuevoCarrito);
+                });
+
+        if (carrito.getItems() == null) {
+            carrito.setItems(new ArrayList<>());
+        }
+
+        return carrito;
     }
 
     private void recalcularTotal(Carrito carrito) {
