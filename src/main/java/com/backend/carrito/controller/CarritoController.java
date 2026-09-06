@@ -22,10 +22,10 @@ public class CarritoController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody ItemCarritoRequestDTO dto) {
         
-        // Extrae el identificador único del usuario desde los claims del token de Azure AD
         String usuarioId = jwt.getSubject(); 
+        String tokenStr = jwt.getTokenValue(); // <-- Extraemos el token string para MS-Producto
         
-        CarritoDTO carrito = carritoService.agregarItem(usuarioId, dto);
+        CarritoDTO carrito = carritoService.agregarItem(usuarioId, dto, tokenStr);
         return ResponseEntity.ok(carrito);
     }
 
@@ -40,8 +40,22 @@ public class CarritoController {
     @DeleteMapping
     public ResponseEntity<Void> vaciarCarrito(@AuthenticationPrincipal Jwt jwt) {
         String usuarioId = jwt.getSubject();
+        String tokenStr = jwt.getTokenValue(); // <-- Extraemos el token string
         
-        carritoService.vaciarCarrito(usuarioId);
+        carritoService.vaciarCarrito(usuarioId, tokenStr);
         return ResponseEntity.noContent().build();
+    }
+
+    // NUEVO: Endpoint para eliminar un solo ítem del carrito
+    @DeleteMapping("/items/{productoId}")
+    public ResponseEntity<CarritoDTO> eliminarItem(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long productoId) {
+        
+        String usuarioId = jwt.getSubject();
+        String tokenStr = jwt.getTokenValue();
+        
+        CarritoDTO carrito = carritoService.eliminarItem(usuarioId, productoId, tokenStr);
+        return ResponseEntity.ok(carrito);
     }
 }

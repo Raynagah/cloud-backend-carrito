@@ -28,3 +28,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     show-sql: true
+producto:
+  api:
+    # Reemplaza esto con la URL real de tu API Gateway en AWS
+    url: https://peq4cfx9b1.execute-api.us-east-1.amazonaws.com/desarrolloprocarr/api/v1/productos

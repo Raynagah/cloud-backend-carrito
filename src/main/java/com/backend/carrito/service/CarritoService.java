@@ -1,5 +1,6 @@
 package com.backend.carrito.service;
 
+import com.backend.carrito.client.ProductoClient;
 import com.backend.carrito.dto.CarritoDTO;
 import com.backend.carrito.dto.ItemCarritoDTO;
 import com.backend.carrito.dto.ItemCarritoRequestDTO;
@@ -18,9 +19,15 @@ import java.util.Optional;
 public class CarritoService {
 
     private final CarritoRepository carritoRepository;
+    private final ProductoClient productoClient; 
 
     @Transactional
-    public CarritoDTO agregarItem(String usuarioId, ItemCarritoRequestDTO dto) {
+    public CarritoDTO agregarItem(String usuarioId, ItemCarritoRequestDTO dto, String token) {
+        // 1. Restar stock en MS-Productos a través de AWS API Gateway
+        // Enviamos cantidad negativa para descontar del stock
+        productoClient.actualizarStock(dto.productoId(), -dto.cantidad(), token);
+
+        // 2. Lógica normal del carrito
         Carrito carrito = obtenerOCrearCarrito(usuarioId);
 
         Optional<ItemCarrito> itemExistente = carrito.getItems().stream()
@@ -44,28 +51,57 @@ public class CarritoService {
         return convertirADTO(carritoRepository.save(carrito));
     }
 
-    // CAMBIO AQUI: Si no existe, creamos uno vacío en lugar de lanzar error
     @Transactional
     public CarritoDTO obtenerCarritoActivo(String usuarioId) {
         Carrito carrito = obtenerOCrearCarrito(usuarioId);
         return convertirADTO(carrito);
     }
 
-    // CAMBIO AQUI: Usamos ifPresent para no fallar si intentan vaciar un carrito inexistente
     @Transactional
-    public void vaciarCarrito(String usuarioId) {
+    public void vaciarCarrito(String usuarioId, String token) {
         carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO").ifPresent(carrito -> {
+            
+            // 1. Devolver el stock de todos los items al MS-Productos
+            for (ItemCarrito item : carrito.getItems()) {
+                productoClient.actualizarStock(item.getProductoId(), item.getCantidad(), token);
+            }
+
+            // 2. Vaciar el carrito en BD
             carrito.getItems().clear();
             carrito.setTotal(BigDecimal.ZERO);
             carritoRepository.save(carrito);
         });
     }
 
+    // NUEVO MÉTODO: Eliminar un solo ítem y devolver su stock
+    @Transactional
+    public CarritoDTO eliminarItem(String usuarioId, Long productoId, String token) {
+        Carrito carrito = obtenerOCrearCarrito(usuarioId);
+        
+        Optional<ItemCarrito> itemExistente = carrito.getItems().stream()
+                .filter(item -> item.getProductoId().equals(productoId))
+                .findFirst();
+
+        if (itemExistente.isPresent()) {
+            ItemCarrito item = itemExistente.get();
+            
+            // 1. Devolver la cantidad al stock de MS-Productos
+            productoClient.actualizarStock(productoId, item.getCantidad(), token);
+            
+            // 2. Quitar del carrito
+            carrito.getItems().remove(item);
+            
+            recalcularTotal(carrito);
+            return convertirADTO(carritoRepository.save(carrito));
+        }
+        
+        return convertirADTO(carrito);
+    }
+
     // =========================================================================
-    // MÉTODOS PRIVADOS AUXILIARES
+    // MÉTODOS PRIVADOS AUXILIARES (Mantienen igual que tu versión)
     // =========================================================================
 
-    // Metodo extraído para no repetir código entre agregar y obtener
     private Carrito obtenerOCrearCarrito(String usuarioId) {
         return carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO")
                 .orElseGet(() -> carritoRepository.save(
@@ -91,7 +127,6 @@ public class CarritoService {
                         item.getProductoId(),
                         item.getCantidad(),
                         item.getPrecioUnitario(),
-                        // Calculamos el subtotal en tiempo real para el DTO
                         item.getPrecioUnitario().multiply(new BigDecimal(item.getCantidad())) 
                 )).toList();
 
