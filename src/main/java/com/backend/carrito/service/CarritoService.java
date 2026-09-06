@@ -21,17 +21,8 @@ public class CarritoService {
 
     @Transactional
     public CarritoDTO agregarItem(String usuarioId, ItemCarritoRequestDTO dto) {
-        // Busca un carrito activo del usuario, si no existe, crea uno nuevo
-        Carrito carrito = carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO")
-                .orElseGet(() -> carritoRepository.save(
-                        Carrito.builder()
-                                .usuarioId(usuarioId)
-                                .estado("ACTIVO")
-                                .total(BigDecimal.ZERO)
-                                .build()
-                ));
+        Carrito carrito = obtenerOCrearCarrito(usuarioId);
 
-        // Verifica si el producto ya está en el carrito para sumar la cantidad
         Optional<ItemCarrito> itemExistente = carrito.getItems().stream()
                 .filter(item -> item.getProductoId().equals(dto.productoId()))
                 .findFirst();
@@ -53,26 +44,38 @@ public class CarritoService {
         return convertirADTO(carritoRepository.save(carrito));
     }
 
-    @Transactional(readOnly = true)
+    // CAMBIO AQUI: Si no existe, creamos uno vacío en lugar de lanzar error
+    @Transactional
     public CarritoDTO obtenerCarritoActivo(String usuarioId) {
-        Carrito carrito = carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO")
-                .orElseThrow(() -> new RuntimeException("No se encontró un carrito activo para el usuario."));
+        Carrito carrito = obtenerOCrearCarrito(usuarioId);
         return convertirADTO(carrito);
     }
 
+    // CAMBIO AQUI: Usamos ifPresent para no fallar si intentan vaciar un carrito inexistente
     @Transactional
     public void vaciarCarrito(String usuarioId) {
-        Carrito carrito = carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO")
-                .orElseThrow(() -> new RuntimeException("No se encontró un carrito activo."));
-        
-        carrito.getItems().clear();
-        carrito.setTotal(BigDecimal.ZERO);
-        carritoRepository.save(carrito);
+        carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO").ifPresent(carrito -> {
+            carrito.getItems().clear();
+            carrito.setTotal(BigDecimal.ZERO);
+            carritoRepository.save(carrito);
+        });
     }
 
     // =========================================================================
     // MÉTODOS PRIVADOS AUXILIARES
     // =========================================================================
+
+    // Metodo extraído para no repetir código entre agregar y obtener
+    private Carrito obtenerOCrearCarrito(String usuarioId) {
+        return carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO")
+                .orElseGet(() -> carritoRepository.save(
+                        Carrito.builder()
+                                .usuarioId(usuarioId)
+                                .estado("ACTIVO")
+                                .total(BigDecimal.ZERO)
+                                .build()
+                ));
+    }
 
     private void recalcularTotal(Carrito carrito) {
         BigDecimal total = carrito.getItems().stream()
@@ -88,7 +91,8 @@ public class CarritoService {
                         item.getProductoId(),
                         item.getCantidad(),
                         item.getPrecioUnitario(),
-                        item.getSubtotal()
+                        // Calculamos el subtotal en tiempo real para el DTO
+                        item.getPrecioUnitario().multiply(new BigDecimal(item.getCantidad())) 
                 )).toList();
 
         return new CarritoDTO(

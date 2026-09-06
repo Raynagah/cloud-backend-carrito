@@ -6,18 +6,18 @@ spring:
     name: ms-carrito
 
   # CONFIGURACIÓN DE SEGURIDAD (AZURE AD)
-  security:
+  security: 
     oauth2:
       resourceserver:
         jwt:
-          # URL para descargar los JWKS y validar la firma de los tokens
-          issuer-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID:78b145ef-56b9-4397-b87c-27b242a9fce5}/v2.0
+          issuer-uri: https://login.microsoftonline.com/
+          tenant-id: 78b145ef-56b9-4397-b87c-27b242a9fce5
 
   # CONFIGURACIÓN DE BASE DE DATOS POSTGRESQL
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/db_carrito}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    username: ${DB_USERNAME:admin}
+    password: ${DB_PASSWORD:admin}
 
   # CONFIGURACIÓN DE JPA E HIBERNATE
   jpa:
