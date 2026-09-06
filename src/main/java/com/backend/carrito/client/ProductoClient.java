@@ -5,8 +5,6 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import java.util.Map;
-
 @Component
 public class ProductoClient {
 
@@ -17,7 +15,6 @@ public class ProductoClient {
             RestClient.Builder restClientBuilder,
             @Value("${producto.api.url}") String msProductoUrl) {
         
-        // JdkClientHttpRequestFactory usa el HttpClient nativo de Java 11+ que sí soporta PATCH
         this.restClient = restClientBuilder
                 .requestFactory(new JdkClientHttpRequestFactory())
                 .build();
@@ -25,9 +22,9 @@ public class ProductoClient {
     }
 
     public void actualizarStock(Long productoId, Integer cantidad, String token) {
-        String url = msProductoUrl + "/" + productoId + "/stock";
+        // Se concatena cantidadVariacion como Query Parameter en lugar de usar RequestBody
+        String url = msProductoUrl + "/" + productoId + "/stock?cantidadVariacion=" + cantidad;
 
-        // Asegura el prefijo 'Bearer ' requerido por Microsoft / Spring Security
         String authorizationHeader = (token != null && token.startsWith("Bearer ")) 
                 ? token 
                 : "Bearer " + token;
@@ -35,7 +32,6 @@ public class ProductoClient {
         restClient.patch()
                 .uri(url)
                 .header("Authorization", authorizationHeader)
-                .body(Map.of("cantidad", cantidad))
                 .retrieve()
                 .toBodilessEntity();
     }
