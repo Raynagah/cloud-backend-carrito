@@ -20,7 +20,7 @@ public class Carrito {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ID del usuario autenticado (extraído del token de Azure AD)
+    // ID o Correo del usuario autenticado (extraído del token de Azure AD)
     @Column(nullable = false, name = "usuario_id")
     private String usuarioId;
 
@@ -33,13 +33,18 @@ public class Carrito {
     @Column(nullable = false)
     private String estado; // Ejemplo: ACTIVO, COMPLETADO, CANCELADO
 
+    @Builder.Default // Evita la advertencia de compilación con Lombok
     @OneToMany(mappedBy = "carrito", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemCarrito> items = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
         this.fechaCreacion = LocalDateTime.now();
-        if (this.total == null) this.total = BigDecimal.ZERO;
-        if (this.estado == null) this.estado = "ACTIVO";
+        if (this.total == null) {
+            this.total = BigDecimal.ZERO;
+        }
+        if (this.estado == null) {
+            this.estado = "ACTIVO";
+        }
     }
 }

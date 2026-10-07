@@ -17,22 +17,31 @@ public class CarritoController {
 
     private final CarritoService carritoService;
 
+    // Método auxiliar para no repetir la lógica de extracción del nombre
+    private String obtenerNombreUsuario(Jwt jwt) {
+        String nombre = jwt.getClaimAsString("name");
+        return (nombre != null && !nombre.isBlank()) ? nombre : "Usuario Desconocido";
+    }
+
     @PostMapping("/items")
     public ResponseEntity<CarritoDTO> agregarItem(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody ItemCarritoRequestDTO dto) {
-        
-        String usuarioId = jwt.getSubject(); 
-        String tokenStr = jwt.getTokenValue(); // <-- Extraemos el token string para MS-Producto
-        
-        CarritoDTO carrito = carritoService.agregarItem(usuarioId, dto, tokenStr);
+
+        String usuarioId = jwt.getSubject();
+        String usuarioNombre = obtenerNombreUsuario(jwt);
+        String tokenStr = jwt.getTokenValue();
+
+        // Agregamos usuarioNombre a la llamada del Service
+        CarritoDTO carrito = carritoService.agregarItem(usuarioId, usuarioNombre, dto, tokenStr);
         return ResponseEntity.ok(carrito);
     }
 
     @GetMapping
     public ResponseEntity<CarritoDTO> obtenerCarritoActivo(@AuthenticationPrincipal Jwt jwt) {
         String usuarioId = jwt.getSubject();
-        
+
+        // Este método en el Service no requiere el nombre, se mantiene igual
         CarritoDTO carrito = carritoService.obtenerCarritoActivo(usuarioId);
         return ResponseEntity.ok(carrito);
     }
@@ -40,22 +49,26 @@ public class CarritoController {
     @DeleteMapping
     public ResponseEntity<Void> vaciarCarrito(@AuthenticationPrincipal Jwt jwt) {
         String usuarioId = jwt.getSubject();
+        String usuarioNombre = obtenerNombreUsuario(jwt);
         String tokenStr = jwt.getTokenValue(); // <-- Extraemos el token string
-        
-        carritoService.vaciarCarrito(usuarioId, tokenStr);
+
+        // Agregamos usuarioNombre a la llamada del Service
+        carritoService.vaciarCarrito(usuarioId, usuarioNombre, tokenStr);
         return ResponseEntity.noContent().build();
     }
 
-    // NUEVO: Endpoint para eliminar un solo ítem del carrito
+    // Endpoint para eliminar un solo ítem del carrito
     @DeleteMapping("/items/{productoId}")
     public ResponseEntity<CarritoDTO> eliminarItem(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long productoId) {
-        
+
         String usuarioId = jwt.getSubject();
+        String usuarioNombre = obtenerNombreUsuario(jwt);
         String tokenStr = jwt.getTokenValue();
-        
-        CarritoDTO carrito = carritoService.eliminarItem(usuarioId, productoId, tokenStr);
+
+        // Agregamos usuarioNombre a la llamada del Service
+        CarritoDTO carrito = carritoService.eliminarItem(usuarioId, usuarioNombre, productoId, tokenStr);
         return ResponseEntity.ok(carrito);
     }
 }

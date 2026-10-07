@@ -8,6 +8,7 @@ import com.backend.carrito.model.Carrito;
 import com.backend.carrito.model.ItemCarrito;
 import com.backend.carrito.repository.CarritoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,17 +17,20 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CarritoService {
 
     private final CarritoRepository carritoRepository;
-    private final ProductoClient productoClient; 
+    private final ProductoClient productoClient;
 
     @Transactional
-    public CarritoDTO agregarItem(String usuarioId, ItemCarritoRequestDTO dto, String token) {
+    public CarritoDTO agregarItem(String usuarioId, String usuarioNombre, ItemCarritoRequestDTO dto, String token) {
+        log.info("El usuario {} ({}) está intentando agregar el producto ID {} a su carrito", usuarioNombre, usuarioId,
+                dto.productoId());
+
         // 1. Restar stock en MS-Productos a través de AWS API Gateway
-        // Enviamos cantidad negativa para descontar del stock
         productoClient.actualizarStock(dto.productoId(), -dto.cantidad(), token);
 
         // 2. Lógica normal del carrito
@@ -39,6 +43,8 @@ public class CarritoService {
         if (itemExistente.isPresent()) {
             ItemCarrito item = itemExistente.get();
             item.setCantidad(item.getCantidad() + dto.cantidad());
+            log.info("Actualizada cantidad del producto ID {} en el carrito del usuario {}", dto.productoId(),
+                    usuarioNombre);
         } else {
             ItemCarrito nuevoItem = ItemCarrito.builder()
                     .carrito(carrito)
@@ -47,6 +53,7 @@ public class CarritoService {
                     .precioUnitario(dto.precioUnitario())
                     .build();
             carrito.getItems().add(nuevoItem);
+            log.info("Nuevo producto ID {} agregado al carrito del usuario {}", dto.productoId(), usuarioNombre);
         }
 
         recalcularTotal(carrito);
@@ -60,10 +67,11 @@ public class CarritoService {
     }
 
     @Transactional
-    public void vaciarCarrito(String usuarioId, String token) {
+    public void vaciarCarrito(String usuarioId, String usuarioNombre, String token) {
+        log.info("El usuario {} ({}) ha solicitado vaciar su carrito manualmente", usuarioNombre, usuarioId);
+
         carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO").ifPresent(carrito -> {
-            
-            // 1. Devolver el stock de todos los items al MS-Productos
+            // 1. Devolver el stock de todos los items al MS-Productos (borrado manual)
             for (ItemCarrito item : carrito.getItems()) {
                 productoClient.actualizarStock(item.getProductoId(), item.getCantidad(), token);
             }
@@ -72,38 +80,58 @@ public class CarritoService {
             carrito.getItems().clear();
             carrito.setTotal(BigDecimal.ZERO);
             carritoRepository.save(carrito);
+            log.info("Carrito vaciado manualmente con éxito para el usuario {}", usuarioNombre);
         });
     }
 
-    // NUEVO MÉTODO: Eliminar un solo ítem y devolver su stock
     @Transactional
-    public CarritoDTO eliminarItem(String usuarioId, Long productoId, String token) {
+    public CarritoDTO eliminarItem(String usuarioId, String usuarioNombre, Long productoId, String token) {
+        log.info("El usuario {} ({}) solicitó eliminar el producto ID {} de su carrito", usuarioNombre, usuarioId,
+                productoId);
         Carrito carrito = obtenerOCrearCarrito(usuarioId);
-        
+
         Optional<ItemCarrito> itemExistente = carrito.getItems().stream()
                 .filter(item -> item.getProductoId().equals(productoId))
                 .findFirst();
 
         if (itemExistente.isPresent()) {
             ItemCarrito item = itemExistente.get();
-            
+
             // 1. Devolver la cantidad al stock de MS-Productos
             productoClient.actualizarStock(productoId, item.getCantidad(), token);
-            
+
             // 2. Quitar del carrito
             carrito.getItems().remove(item);
-            
+
             recalcularTotal(carrito);
+            log.info("Producto ID {} eliminado exitosamente del carrito del usuario {}", productoId, usuarioNombre);
             return convertirADTO(carritoRepository.save(carrito));
         }
-        
+
         return convertirADTO(carrito);
     }
 
-    // =========================================================================
-    // MÉTODOS PRIVADOS AUXILIARES (Mantienen igual que tu versión)
-    // =========================================================================
+    // MÉTODO ASÍNCRONO VIA RABBITMQ: Vaciar carrito tras concretarse la orden
+    @Transactional
+    public void vaciarCarritoPorUsuario(String usuarioId, String usuarioNombre) {
+        log.info("Orden creada recibida. Vaciando carrito automáticamente para el usuario: {} ({})", usuarioNombre,
+                usuarioId);
 
+        // Busca el carrito ACTIVO del usuario utilizando el identificador (OID)
+        carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO").ifPresentOrElse(carrito -> {
+            carrito.getItems().clear();
+            carrito.setTotal(BigDecimal.ZERO);
+            carritoRepository.save(carrito);
+            log.info("Carrito vaciado exitosamente tras compra para el usuario: {}", usuarioNombre);
+        }, () -> {
+            log.warn("No se encontró carrito activo para el usuario: {} ({}) al procesar el evento de RabbitMQ",
+                    usuarioNombre, usuarioId);
+        });
+    }
+
+    // =========================================================================
+    // MÉTODOS PRIVADOS AUXILIARES
+    // =========================================================================
     private Carrito obtenerOCrearCarrito(String usuarioId) {
         Carrito carrito = carritoRepository.findByUsuarioIdAndEstado(usuarioId, "ACTIVO")
                 .orElseGet(() -> {
@@ -112,7 +140,7 @@ public class CarritoService {
                             .estado("ACTIVO")
                             .total(BigDecimal.ZERO)
                             .fechaCreacion(LocalDateTime.now())
-                            .items(new ArrayList<>()) // <-- Asigna explícitamente una lista vacía
+                            .items(new ArrayList<>())
                             .build();
                     return carritoRepository.save(nuevoCarrito);
                 });
@@ -138,8 +166,8 @@ public class CarritoService {
                         item.getProductoId(),
                         item.getCantidad(),
                         item.getPrecioUnitario(),
-                        item.getPrecioUnitario().multiply(new BigDecimal(item.getCantidad())) 
-                )).toList();
+                        item.getPrecioUnitario().multiply(new BigDecimal(item.getCantidad()))))
+                .toList();
 
         return new CarritoDTO(
                 carrito.getId(),
@@ -147,7 +175,6 @@ public class CarritoService {
                 carrito.getFechaCreacion(),
                 carrito.getTotal(),
                 carrito.getEstado(),
-                itemsDTO
-        );
+                itemsDTO);
     }
 }

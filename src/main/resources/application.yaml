@@ -6,7 +6,7 @@ spring:
     name: ms-carrito
 
   # CONFIGURACIÓN DE SEGURIDAD (AZURE AD)
-  security: 
+  security:
     oauth2:
       resourceserver:
         jwt:
@@ -19,6 +19,13 @@ spring:
     username: ${DB_USERNAME:admin}
     password: ${DB_PASSWORD:admin}
 
+  # CONFIGURACIÓN DE RABBITMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: 5672
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASSWORD:admin}
+
   # CONFIGURACIÓN DE JPA E HIBERNATE
   jpa:
     hibernate:
@@ -28,7 +35,18 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     show-sql: true
+
 producto:
   api:
-    # Reemplaza esto con la URL real de tu API Gateway en AWS
-    url: https://peq4cfx9b1.execute-api.us-east-1.amazonaws.com/desarrolloprocarr/api/v1/productos
+    url: ${PRODUCTO_API_URL:http://ms-producto:8082/api/v1/productos}
+  
+logging:
+  level:
+    # Autorizacion: un nivel bajo es un riesgo, no solo ruido.
+    org.springframework.security: INFO
+    com.lambda.validador: INFO
+    # AWSLambdaUtils registra el evento ENTERO en INFO, y el evento del authorizer
+    # lleva el token en claro dos veces: en "identitySource" y en
+    # "headers.authorization". Con este nivel, cada peticion deja un JWT
+    # reutilizable escrito en CloudWatch Logs.
+    org.springframework.cloud.function: WARN
