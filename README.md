@@ -67,14 +67,19 @@ docker run -d \
 
 ## 🔗 Ecosistema de Repositorios
 
-### Backend
-
-* [Microservicio Carrito (Este repositorio)](https://github.com/Raynagah/cloud-backend-carrito)
-* [BFF Orchestrator](https://github.com/Raynagah/cloud-backend-bff)
-* [Microservicio Producto](https://github.com/Raynagah/cloud-backend-producto)
-* [Microservicio Usuarios](https://github.com/NBello26/ms-usuarios-cloud.git)
-* [Microservicio Base de Datos](https://github.com/NBello26/ms-bd-cloud)
-
 ### Frontend
 
-* [Frontend React](https://github.com/Raynagah/cloud-frontend.git)
+* [Frontend React ](https://github.com/Raynagah/cloud-frontend.git)
+
+### Backend
+
+* [BFF Orchestrator](https://github.com/Raynagah/cloud-backend-bff)
+* [Microservicio Producto](https://github.com/Raynagah/cloud-backend-producto)
+* [Microservicio Carrito (Este repositorio)](https://github.com/Raynagah/cloud-backend-carrito)
+* [Microservicio Usuarios](https://github.com/NBello26/ms-usuarios-cloud.git)
+* [Microservicio Base de Datos](https://github.com/NBello26/ms-bd-cloud)
+* [Microservicio Ordenes](https://github.com/Raynagah/cloud-backend-ordenes)
+* [Microservicio Notificaciones](https://github.com/Raynagah/cloud-backend-notificaciones)
+* [Microservicio Despacho](https://github.com/Raynagah/cloud-backend-despacho)
+* [Microservicio Pago](https://github.com/Raynagah/cloud-backend-pago)
+* [Microservicio Analítica](https://github.com/Raynagah/cloud-backend-analitica)
