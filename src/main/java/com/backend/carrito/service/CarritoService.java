@@ -2,6 +2,7 @@ package com.backend.carrito.service;
 
 import com.backend.carrito.client.ProductoClient;
 import com.backend.carrito.dto.CarritoDTO;
+import com.backend.carrito.events.EventoUsuarioPublisher;
 import com.backend.carrito.dto.ItemCarritoDTO;
 import com.backend.carrito.dto.ItemCarritoRequestDTO;
 import com.backend.carrito.model.Carrito;
@@ -24,6 +25,7 @@ public class CarritoService {
 
     private final CarritoRepository carritoRepository;
     private final ProductoClient productoClient;
+    private final EventoUsuarioPublisher eventos;
 
     @Transactional
     public CarritoDTO agregarItem(String usuarioId, String usuarioNombre, ItemCarritoRequestDTO dto, String token) {
@@ -57,7 +59,11 @@ public class CarritoService {
         }
 
         recalcularTotal(carrito);
-        return convertirADTO(carritoRepository.save(carrito));
+        CarritoDTO resultado = convertirADTO(carritoRepository.save(carrito));
+
+        eventos.publicar("CARRITO_ITEM_AGREGADO", usuarioId, usuarioNombre,
+                dto.productoId(), null, dto.precioUnitario(), dto.cantidad());
+        return resultado;
     }
 
     @Transactional
@@ -81,6 +87,7 @@ public class CarritoService {
             carrito.setTotal(BigDecimal.ZERO);
             carritoRepository.save(carrito);
             log.info("Carrito vaciado manualmente con éxito para el usuario {}", usuarioNombre);
+            eventos.publicar("CARRITO_VACIADO", usuarioId, usuarioNombre, null, null, null, null);
         });
     }
 
@@ -105,7 +112,11 @@ public class CarritoService {
 
             recalcularTotal(carrito);
             log.info("Producto ID {} eliminado exitosamente del carrito del usuario {}", productoId, usuarioNombre);
-            return convertirADTO(carritoRepository.save(carrito));
+            CarritoDTO resultado = convertirADTO(carritoRepository.save(carrito));
+
+            eventos.publicar("CARRITO_ITEM_ELIMINADO", usuarioId, usuarioNombre,
+                    productoId, null, item.getPrecioUnitario(), item.getCantidad());
+            return resultado;
         }
 
         return convertirADTO(carrito);
@@ -123,6 +134,7 @@ public class CarritoService {
             carrito.setTotal(BigDecimal.ZERO);
             carritoRepository.save(carrito);
             log.info("Carrito vaciado exitosamente tras compra para el usuario: {}", usuarioNombre);
+            eventos.publicar("COMPRA_REALIZADA", usuarioId, usuarioNombre, null, null, null, null);
         }, () -> {
             log.warn("No se encontró carrito activo para el usuario: {} ({}) al procesar el evento de RabbitMQ",
                     usuarioNombre, usuarioId);
